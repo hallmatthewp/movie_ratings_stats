@@ -11,7 +11,7 @@ Your submission should satisfy the following:
 * Connect to the provided streaming server
 * Listen and aggregate rating submissions
 * Provide an interface to retrieve statistics about the ratings and the service
-** This can be done via a web page, command line or any other mechanism you'd like to create
+    * This can be done via a web page, command line or any other mechanism you'd like to create
 
 Statistics to provide:
 
@@ -23,7 +23,7 @@ Statistics to provide:
 Extra credit:
 
 * Use all available CPU cores to aggregate more rating data
-* Provide real-time updates to your chosen statistics interface
+* Provide real-time updates to your chosen interface
 
 ## 3rd-party Code
    
