@@ -15,9 +15,9 @@ Your submission should satisfy the following:
 
 Statistics to provide:
 
-* Total of all ratings received
+* Count of all ratings received
 * Average rating for each Movie
-* Total ratings per Movie
+* Total number of ratings per Movie
 * Average ratings per second
 
 Extra credit:
