@@ -1,0 +1,10 @@
+{
+  "name": "rating-aggregation",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Streaming Rating Aggregation",
+  "main": "streamingServer.js",
+  "scripts": {
+      "start": "node streamingServer.js"
+  }
+}
