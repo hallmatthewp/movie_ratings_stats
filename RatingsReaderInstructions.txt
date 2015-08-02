@@ -1,7 +1,8 @@
 Steps to run Ratings Reader
 ---------------------------
 1) Decrypt the private key file (google-oauth.pem.des3) inside of ./crypt to a 
-   file named google-oauth.pem
+   file named google-oauth.pem w/ the following command:
+   'openssl des3 -d -in google-oauth.pem.des3 -out google-oauth.pem'
    NOTE: This requires a secret passphrase that Matthew Hall will supply at demo 
    time. If you do not decrypt the private key file, Google Drive Sheets updates 
    will not occur.
