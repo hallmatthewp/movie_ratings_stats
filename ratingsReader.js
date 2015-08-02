@@ -1,44 +1,52 @@
+// ratingsReader.js - Netflix Take Home Exercise
+// Connect to streamingServer, read and aggregate movie rating data
+// Author: Matthew Hall
+
 'use strict';
 
 // Configuration variables
 var STREAM_INTERVAL = 10000, 
-	TIME_INTERVAL = 1, // Interval, in secs, between UI refreshes
-	LOG_TO_CONSOLE = true,
-	PUSH_TO_SHEET = true,
-	HIGH_PRECISION_MODE = false;
+    TIME_INTERVAL = 2.5, // Interval, in secs, between UI refreshes
+    LOG_TO_CONSOLE = true,
+    PUSH_TO_SHEET = true,
+    HIGH_PRECISION_MODE = true;
 
-var MILLISECS_PER_SEC = 1000;
+// Constants
+var MILLISECS_PER_SEC = 1000,
+    MOVIE_ID_COL = 1,
+    MOVIE_AVG_COL = 2,
+    MOVIE_CNT_COL = 3,
+    RATINGS_CNT_COL = 5,
+    RATINGS_PER_SEC_COL = 6,
+    STATS_ROW = 2;
 
-// Store our data
+// Movie entry data
 var movies = {},
     Movie = require('./lib/movie'),
-    nextCell = 1,
-    totalRatings = 0,
-    ratingsPerSec = 0,
-    lastSampleRatings = 0,
-    lastSampleTime = 0;
+    nextCell = 2; // Begin writing data below our column title
 
-var http = require('http');
-// var readBuf = '';
+// Global stats data
+var stats = {
+    totalRatings: 0,
+    ratingsPerSec: 0,
+    lastSampleRatings: 0,
+    lastSampleTime: 0
+};
 
 // Server connection details
+var http = require('http');
 var options = {
     hostname: 'localhost',
     port: 7999
 };
 
-// Handle the connection to the ratings server
+// Setup the connection to the ratings server
 var req = http.request(options, function(res) {
-    //console.log('STATUS: ' + res.statusCode);
-    //console.log('HEADERS: ' + JSON.stringify(res.headers));
     res.setEncoding('utf8');
     res.on('data', readMovieJSON);
-    
-    // Read in the stream data 
-    // res.on('readable', function() {
-    //     readBuf = res.read();
-    //     console.log(JSON.stringify(readBuf));
-    // });
+    res.on('end', function() {
+        console.log("Download complete");
+    });
 });
 
 req.on('error', function(err) {
@@ -46,21 +54,16 @@ req.on('error', function(err) {
 });
 
 function readMovieJSON(chunk) {
-    //console.log(chunk);
     // Check chunk length for intermittent bad JSON reception
     if (chunk.length < 31) {
+        // Drop payload if the JSON is incomplete
         return;
     }
     var jsonObj = JSON.parse(chunk),
         curMovieId = jsonObj['movieId'],
         curRating = jsonObj['rating'];
     
-    totalRatings++;    
-    //console.log(jsonObj);
-    //console.log("MovieID: " + jsonObj['movieId'] + ", " +
-    //            "Rating: " + jsonObj['rating'] + ", Total: " +
-    //            totalRatings);
-    
+    stats.totalRatings++;    
     takeSample();
 
     if (curMovieId in movies) {
@@ -73,65 +76,95 @@ function readMovieJSON(chunk) {
 }
 
 function takeSample() {
-	// We only take samples if we've surpassed the TIME_INTERVAL 
-	var curTime = Date.now();
-	if ((curTime - lastSampleTime) > (TIME_INTERVAL * MILLISECS_PER_SEC)) {
-		// Update our sample time and sample ratings counters
-		
-		// ratings/sec = (delta ratings)/(delta time) * ms_per_s
-		ratingsPerSec = ((totalRatings - lastSampleRatings) /
-						 (curTime - lastSampleTime) *
-						 MILLISECS_PER_SEC);
-		
-		if (!HIGH_PRECISION_MODE) {
-			ratingsPerSec = Math.floor(ratingsPerSec);
-		}
-		
-		lastSampleRatings = totalRatings;
-		lastSampleTime = curTime;
-		dumpData();
-	}
+    // We only take samples if we've surpassed the TIME_INTERVAL 
+    var curTime = Date.now();
+    if ((curTime - stats.lastSampleTime) > (TIME_INTERVAL * MILLISECS_PER_SEC)) {
+        // Update our sample time and sample ratings counters
+        
+        // ratings/sec = (delta ratings)/(delta time in ms) * ms_per_s
+        stats.ratingsPerSec  = ((stats.totalRatings - stats.lastSampleRatings) /
+                                (curTime - stats.lastSampleTime) *
+                                MILLISECS_PER_SEC);
+        
+        if (!HIGH_PRECISION_MODE) {
+            stats.ratingsPerSec  = Math.floor(stats.ratingsPerSec );
+        }
+        
+        stats.lastSampleRatings = stats.totalRatings;
+        stats.lastSampleTime = curTime;
+        dumpData();
+        pushDataToSheet();
+    }
 }
 
 function dumpData() {
-	if (!LOG_TO_CONSOLE) {
-		return;
-	}
-	// Clear the previous movie dump
-	process.stdout.write("\u001b[2J\u001b[0;0H");
-
-	console.log("Total Ratings: " + totalRatings);
-	console.log("Ratings/Second: " + ratingsPerSec);
-	console.log(JSON.stringify(movies, null, 4));
+    if (!LOG_TO_CONSOLE) {
+        return;
+    }
+    
+    // Clear the previous movie dump on the console
+    // This was taken from stack overflow :)
+    process.stdout.write("\u001b[2J\u001b[0;0H");
+    
+    if (HIGH_PRECISION_MODE) {
+        console.log("---=== High Precision Mode Enabled ===---");
+    }
+    console.log("Total Ratings: " + stats.totalRatings);
+    console.log("Ratings/Second: " + stats.ratingsPerSec );
+    console.log(JSON.stringify(movies, null, 4));
 }
 
-// function pushDataToSheet() {
-// 	if (!PUSH_TO_SHEET) {
-// 		return;
-// 	}
-// 	var Spreadsheet = require('edit-google-spreadsheet');
-// 	Spreadsheet.load({
-// 		debug: true,
-// 		spreadsheetName: 'Movie Ratings Test1',
-// 		worksheetName: 'Sheet1',
-// 		
-// 		oauth2: {
-//             client_id: 'generated-id.apps.googleusercontent.com',
-//             client_secret: 'generated-secret',
-//             refresh_token: 'token generated with get_oauth2_permission.js'
-//         },
-//         
-//         
-//     },
-// }
-// Load up the google sheet
-// var Spreadsheet = require('edit-google-spreadsheet');
-// 
-// Spreadsheet.load({
-//     debug: true,
-//     spreadsheetName: 'Movie Ratings Test1
+function pushDataToSheet() {
+    if (!PUSH_TO_SHEET) {
+        return;
+    }
+    var Spreadsheet = require('edit-google-spreadsheet');
+    Spreadsheet.load({
+        debug: LOG_TO_CONSOLE,
+        spreadsheetId: "18pigTsw6OW7Vv3unFI-J7GFn-m45O2caxQk_bN7nkys",
+        worksheetId: "od6",
+        
+        oauth: {
+            email: '131931030938-60ov9erojskbui3hv1ejggik6v7kstgh@developer.gserviceaccount.com',
+            keyFile: './crypt/google-oauth.pem'
+        }
+    }, function sheetReady(err, spreadsheet) {
+        if (err) {
+            throw err;
+        }
+        
+        // Initialize our spreadsheet update object
+        var sheetData = {};
+        sheetData[STATS_ROW] = {};
+
+        for (var movieId in movies) {
+            // Build our spreadsheet update object from each movie in our data
+            var row = movies[movieId].getCellNum();
+            sheetData[row] = {};
+            sheetData[row][MOVIE_ID_COL] = movieId;
+            sheetData[row][MOVIE_AVG_COL] = movies[movieId].getAvgRating();
+            sheetData[row][MOVIE_CNT_COL] = movies[movieId].getNumRating();    
+        }
+        
+        // Add the global stats to the spreadsheet update object
+        sheetData[STATS_ROW][RATINGS_CNT_COL] = stats.totalRatings;
+        sheetData[STATS_ROW][RATINGS_PER_SEC_COL] = stats.ratingsPerSec;
+        
+        spreadsheet.add(sheetData);
+        spreadsheet.send(function(err) {
+            if(err) {
+                throw err;
+            }
+            if (LOG_TO_CONSOLE) {
+                console.log("Updated Spreadsheet");
+            }
+        });
+    });
+}
 
 // Kick things off
-lastSampleTime = Date.now();
-console.log("---------- Initializing ----------");
+stats.lastSampleTime = Date.now();
+if (LOG_TO_CONSOLE) {
+    console.log("---------- Initializing ----------");
+}
 req.end();
