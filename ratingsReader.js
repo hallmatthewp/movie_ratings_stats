@@ -9,6 +9,7 @@ var STREAM_INTERVAL = 10000,
     TIME_INTERVAL = 2.5, // Interval, in secs, between UI refreshes
     LOG_TO_CONSOLE = true,
     PUSH_TO_SHEET = true,
+    USE_SET_INTERVAL = true,
     HIGH_PRECISION_MODE = true;
 
 // Constants
@@ -53,6 +54,18 @@ req.on('error', function(err) {
     console.log("Problem w/ request: " + err.message);
 });
 
+// Kick things off
+stats.lastSampleTime = Date.now();
+if (LOG_TO_CONSOLE) {
+    console.log("---------- Initializing ----------");
+}
+
+// Make the request
+req.end();
+
+if (USE_SET_INTERVAL) {
+	setInterval(takeSample, TIME_INTERVAL * MILLISECS_PER_SEC);
+}
 function readMovieJSON(chunk) {
     // Check chunk length for intermittent bad JSON reception
     if (chunk.length < 31) {
@@ -63,8 +76,10 @@ function readMovieJSON(chunk) {
         curMovieId = jsonObj['movieId'],
         curRating = jsonObj['rating'];
     
-    stats.totalRatings++;    
-    takeSample();
+    stats.totalRatings++;
+    if (!USE_SET_INTERVAL) {   
+    	takeSample();
+    }
 
     if (curMovieId in movies) {
         // The movie has been in our database
@@ -130,7 +145,8 @@ function pushDataToSheet() {
         }
     }, function sheetReady(err, spreadsheet) {
         if (err) {
-            throw err;
+            console.log("Error: " + err);
+            return;
         }
         
         // Initialize our spreadsheet update object
@@ -140,10 +156,12 @@ function pushDataToSheet() {
         for (var movieId in movies) {
             // Build our spreadsheet update object from each movie in our data
             var row = movies[movieId].getCellNum();
-            sheetData[row] = {};
-            sheetData[row][MOVIE_ID_COL] = movieId;
-            sheetData[row][MOVIE_AVG_COL] = movies[movieId].getAvgRating();
-            sheetData[row][MOVIE_CNT_COL] = movies[movieId].getNumRating();    
+            if (typeof row === 'number') {
+				sheetData[row] = {};
+				sheetData[row][MOVIE_ID_COL] = movieId;
+				sheetData[row][MOVIE_AVG_COL] = movies[movieId].getAvgRating();
+				sheetData[row][MOVIE_CNT_COL] = movies[movieId].getNumRating();    
+        	}
         }
         
         // Add the global stats to the spreadsheet update object
@@ -153,7 +171,8 @@ function pushDataToSheet() {
         spreadsheet.add(sheetData);
         spreadsheet.send(function(err) {
             if(err) {
-                throw err;
+                console.log("Error: " + err);
+                return;
             }
             if (LOG_TO_CONSOLE) {
                 console.log("Updated Spreadsheet");
@@ -161,10 +180,3 @@ function pushDataToSheet() {
         });
     });
 }
-
-// Kick things off
-stats.lastSampleTime = Date.now();
-if (LOG_TO_CONSOLE) {
-    console.log("---------- Initializing ----------");
-}
-req.end();
