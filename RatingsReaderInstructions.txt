@@ -7,11 +7,14 @@ Steps to run Ratings Reader
    time. If you do not decrypt the private key file, Google Drive Sheets updates 
    will not occur.
 
-2) Execute 'node ./streamingServer.js'
+2) Install edit-google-spreadsheet for Node via the following command
+   'npm install edit-google-spreadsheet'
 
-3) Execute 'node ./ratingsReader.js'
+3) Execute 'node ./streamingServer.js'
 
-4) Point browser to: https://docs.google.com/spreadsheets/d/18pigTsw6OW7Vv3unFI-J7GFn-m45O2caxQk_bN7nkys/edit#gid=0
+4) Execute 'node ./ratingsReader.js'
+
+5) Point browser to: https://docs.google.com/spreadsheets/d/18pigTsw6OW7Vv3unFI-J7GFn-m45O2caxQk_bN7nkys/edit#gid=0
 
 Additional Options
 ------------------
