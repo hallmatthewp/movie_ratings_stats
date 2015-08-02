@@ -5,8 +5,7 @@
 'use strict';
 
 // Configuration variables
-var STREAM_INTERVAL = 10000, 
-    TIME_INTERVAL = 2.5, // Interval, in secs, between UI refreshes
+var TIME_INTERVAL = 2.5, // Interval, in secs, between UI refreshes
     LOG_TO_CONSOLE = true,
     PUSH_TO_SHEET = true,
     USE_SET_INTERVAL = true,
@@ -64,7 +63,7 @@ if (LOG_TO_CONSOLE) {
 req.end();
 
 if (USE_SET_INTERVAL) {
-	setInterval(takeSample, TIME_INTERVAL * MILLISECS_PER_SEC);
+    setInterval(takeSample, TIME_INTERVAL * MILLISECS_PER_SEC);
 }
 function readMovieJSON(chunk) {
     // Check chunk length for intermittent bad JSON reception
@@ -72,13 +71,18 @@ function readMovieJSON(chunk) {
         // Drop payload if the JSON is incomplete
         return;
     }
-    var jsonObj = JSON.parse(chunk),
-        curMovieId = jsonObj['movieId'],
+
+    // Parse the JSON payload and ensure it parsed correctly
+    var jsonObj = JSON.parse(chunk);
+    if (typeof jsonObj === 'undefined') {
+        console.log("Error: Bad JSON parse");
+        return;
+    }
+    var curMovieId = jsonObj['movieId'],
         curRating = jsonObj['rating'];
-    
     stats.totalRatings++;
     if (!USE_SET_INTERVAL) {   
-    	takeSample();
+        takeSample();
     }
 
     if (curMovieId in movies) {
@@ -157,11 +161,11 @@ function pushDataToSheet() {
             // Build our spreadsheet update object from each movie in our data
             var row = movies[movieId].getCellNum();
             if (typeof row === 'number') {
-				sheetData[row] = {};
-				sheetData[row][MOVIE_ID_COL] = movieId;
-				sheetData[row][MOVIE_AVG_COL] = movies[movieId].getAvgRating();
-				sheetData[row][MOVIE_CNT_COL] = movies[movieId].getNumRating();    
-        	}
+                sheetData[row] = {};
+                sheetData[row][MOVIE_ID_COL] = movieId;
+                sheetData[row][MOVIE_AVG_COL] = movies[movieId].getAvgRating();
+                sheetData[row][MOVIE_CNT_COL] = movies[movieId].getNumRating();    
+            }
         }
         
         // Add the global stats to the spreadsheet update object
