@@ -1,4 +1,4 @@
-# Netflix Node.js Coding Challenge
+# Node.js learning exercise
 
 ## Implement a Movie rating aggregation service
 Your challenge is to implement an aggregation service that will receive a continuous supply of 
